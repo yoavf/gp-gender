@@ -13,6 +13,8 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 class GP_Gender {
 
+	public $context_prefix = '_wpg_';
+
 	public function __construct() {
 		add_filter( 'gp_for_translation_rows', array( $this, 'for_translation') );
 
@@ -34,11 +36,11 @@ class GP_Gender {
 	}
 
 	public function for_translation( $rows ) {
-		//TODO: use translation set info to skip if language has no gender grammar
+		//TODO: use translation set / CLDR data to skip if language has no gender grammar
 		foreach ( $rows as $row ) {
-			if ( gp_startswith( $row->context, '_wpg' ) ) {
+			if ( gp_startswith( $row->context, $this->context_prefix ) ) {
 				// Don't display our gender context prefix
-				$row->context = str_replace( '_wpg', '', $row->context );
+				$row->context = str_replace( $this->context_prefix, '', $row->context );
 				$row->is_gender = true;
 			}
 		}
@@ -46,13 +48,15 @@ class GP_Gender {
 	}
 
 	public function for_export( $entries ) {
-		//TODO: use translation set info to skip if language has no gender grammar
+		//TODO: use translation set / CLDR data to skip if language has no gender grammar
 		$g_entries = array();
+		$gender_context_keys =  array( '', 'female_', 'male_' );
+
 		foreach ( $entries as $key => $entry ) {
 			if ( isset( $entry->is_gender ) ) {
-				foreach ( array( 'netural', 'female', 'male' ) as $i => $gender ) {
+				foreach ( $gender_context_keys as $i => $gender_context_key ) {
 					$g_entry = clone $entry;
-					$g_entry->context =  '_wpg_' . $gender . '_' . $g_entry->context;
+					$g_entry->context = $this->context_prefix . $gender_context_key . $g_entry->context;
 					$g_entry->translations = array();
 					$g_entry->translations[] = $entry->translations[ $i ];
 					$g_entries[] = $g_entry ;
@@ -60,7 +64,8 @@ class GP_Gender {
 				unset( $entries[ $key ] );
 			}
 		}
-		return $entries + $g_entries;
+
+		return array_merge( $entries, $g_entries);
 	}
 
 	public function override_textareas( $override, $translation ) {
@@ -68,7 +73,7 @@ class GP_Gender {
 	}
 
 	public function translation_row_textareas( $t, $singular, $plural, $can_edit, $can_approve_translation ) {
-		printf( '<p>' . __( 'Neutral: %s', 'glotpress' ), '<span class="original">'. $singular .'</span></p>');
+		printf( '<p>' . __( 'Neutral/Unknown: %s', 'glotpress' ), '<span class="original">'. $singular .'</span></p>');
 		textareas( $t, array( $can_edit, $can_approve_translation ), 0 );
 
 		printf( '<p class="clear">' . __( 'Female: %s', 'glotpress' ), '<span class="original">'. $singular .'</span></p>');
